@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LabVault - 实验室样本协作系统</title>
+    
+    <!-- 腾讯云 SDK -->
+    <script src="https://imgcache.qq.com/qcloud/tcbjs/1.10.10/tcb.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* 样式保持不变... */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html, body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+        }
+        
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid #10b981;
+            animation: pulse-green 2s infinite;
+        }
+        
+        .local-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: rgba(100, 116, 139, 0.3);
+            color: #94a3b8;
+            border: 1px solid #475569;
+        }
+        
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.2);
+            margin-left: -8px;
+        }
+        
+        .user-avatar:first-child { margin-left: 0; }
+        
+        .live-toast {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(16, 185, 129, 0.95);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease-out;
+            z-index: 100;
+        }
+        
+        .live-toast.show { transform: translateX(0); }
+        
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid #475569;
+        }
+        
+        .view-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .view-btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .fridge-container {
+            background: linear-gradient(180deg, #fef08a 0%, #fde047 100%);
+            border: 3px solid #1e3a8a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .layer-header {
+            background: #1e3a8a;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .rack-row {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+        
+        .rack {
+            flex: 0 0 140px;
+            background: #1e3a8a;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        
+        .rack-title {
+            background: #fbbf24;
+            color: #1e3a8a;
+            text-align: center;
+            padding: 6px;
+            border-radius: 6px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .drawer {
+            background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+            border: 2px solid #60a5fa;
+            border-radius: 6px;
+            padding: 12px 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .drawer:hover {
+            transform: translateX(3px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        
+        .drawer.has-data {
+            background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+            border-color: #4ade80;
+        }
+        
+        .drawer-number { font-size: 1.2rem; font-weight: 800; color: white; }
+        .drawer-name { font-size: 0.75rem; color: #dbeafe; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .drawer-count { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.3); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; }
+        
+        .directory-view { width: 100%; }
+        
+        .inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #1e293b;
+            font-size: 0.9rem;
+            margin-bottom: 32px;
+        }
+        
+        .inventory-table th {
+            background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+            color: #fbbf24;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 700;
+            border: 1px solid #475569;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .inventory-table td {
+            border: 1px solid #475569;
+            padding: 0;
+            vertical-align: top;
+            background: #0f172a;
+        }
+        
+        .dir-layer-header {
+            background: linear-gradient(90deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            padding: 14px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-align: center;
+            border: 1px solid #475569;
+        }
+        
+        .dir-row-header {
+            background: #1e40af;
+            color: white;
+            padding: 12px 8px;
+            font-weight: 600;
+            text-align: center;
+            border: 1px solid #475569;
+            width: 100px;
+            vertical-align: middle;
+        }
+        
+        .box-list { padding: 8px; min-height: 120px; }
+        
+        .box-item {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #475569;
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .box-item:hover {
+            background: rgba(51, 65, 85, 0.9);
+            border-color: #3b82f6;
+        }
+        
+        .box-item.empty { color: #64748b; font-style: italic; }
+        .box-item.highlight { background: rgba(251, 191, 36, 0.3) !important; border-color: #fbbf24 !important; }
+        
+        .box-number {
+            background: #475569;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        
+        .box-content { flex: 1; word-break: break-all; line-height: 1.4; }
+        
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 150; align-items: center; justify-content: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: #0f172a; border: 2px solid #334155; border-radius: 16px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { background: #1e293b; padding: 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; }
+        .modal-body { padding: 24px; }
+        
+        .plate-grid { display: grid; gap: 6px; margin: 20px 0; }
+        .plate-81 { grid-template-columns: repeat(9, 1fr); }
+        .plate-9 { grid-template-columns: repeat(3, 1fr); max-width: 400px; margin: 20px auto; }
+        
+        .well {
+            aspect-ratio: 1;
+            background: #334155;
+            border: 2px solid #475569;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            padding: 4px;
+            min-height: 60px;
+        }
+        
+        .well:hover { border-color: #3b82f6; transform: scale(1.05); }
+        .well.occupied { background: linear-gradient(135deg, #059669 0%, #047857 100%); border-color: #10b981; }
+        .well.selected { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border-color: #f87171; box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.3); }
+        .well-coord { font-size: 0.7rem; color: #94a3b8; font-weight: 600; }
+        .well-name { font-size: 0.65rem; color: white; text-align: center; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 0.875rem; color: #94a3b8; margin-bottom: 6px; font-weight: 500; }
+        .form-input, .form-select { width: 100%; padding: 10px 14px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 0.95rem; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: #3b82f6; }
+        
+        .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; }
+        .btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+        .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
+        .btn-warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
+        
+        .setup-wizard { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.98); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .setup-wizard.hidden { display: none; }
+        
+        .error-banner {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+        }
+        
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        
+        .toolbar-btn {
+            padding: 8px 16px;
+            background: #334155;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .toolbar-btn:hover { background: #475569; border-color: #64748b; }
+        
+        .hidden { display: none !important; }
+        
+        .diagnostic-panel {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            font-size: 0.85rem;
+        }
+        
+        .diagnostic-title {
+            font-weight: 600;
+            color: #fbbf24;
+            margin-bottom: 8px;
+        }
+        
+        .diagnostic-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .diagnostic-item:last-child { border-bottom: none; }
+        
+        .status-ok { color: #10b981; }
+        .status-error { color: #ef4444; }
+        .status-warn { color: #f59e0b; }
+    </style>
+</head>
+<body>
+
+    <!-- 初始化向导 -->
+    <div id="setupWizard" class="setup-wizard">
+        <div class="glass-panel rounded-2xl p-8 w-full max-w-lg">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-snowflake text-white text-3xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-white mb-2">LabVault Pro</h1>
+                <p class="text-slate-400">实验室样本协作系统</p>
+            </div>
+
+            <div id="errorMsg" class="error-banner hidden"></div>
+
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">您的姓名</label>
+                    <input type="text" id="setupName" class="form-input" placeholder="例如：张博士" value="">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">环境 ID（已预填）</label>
+                    <input type="text" id="setupEnvId" class="form-input text-slate-500" value="labvault-5gkypu3d85c31295" readonly>
+                </div>
+
+                <div class="bg-amber-900/30 border border-amber-700 rounded-lg p-4">
+                    <h4 class="font-semibold text-amber-200 mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>连接问题？</h4>
+                    <ul class="text-sm text-amber-100 space-y-1 list-disc list-inside">
+                        <li>确保已开启腾讯云"身份认证-匿名登录"</li>
+                        <li>建议使用本地服务器运行（见下方按钮）</li>
+                        <li>或先使用本地模式体验功能</li>
+                    </ul>
+                </div>
+
+                <!-- 诊断信息面板 -->
+                <div id="diagnosticPanel" class="diagnostic-panel hidden">
+                    <div class="diagnostic-title"><i class="fas fa-stethoscope mr-2"></i>诊断信息</div>
+                    <div id="diagnosticContent"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="app.initialize()" class="btn btn-primary justify-center py-3">
+                        <i class="fas fa-cloud"></i> 云端模式
+                    </button>
+                    <button onclick="app.useLocalMode()" class="btn btn-warning justify-center py-3">
+                        <i class="fas fa-desktop"></i> 本地模式
+                    </button>
+                </div>
+                
+                <div class="text-center space-y-2">
+                    <button onclick="app.runDiagnostics()" class="text-slate-400 text-sm hover:text-white underline">
+                        <i class="fas fa-bug mr-1"></i>运行诊断测试
+                    </button>
+                    <br>
+                    <button onclick="app.showInvite()" class="text-blue-400 text-sm hover:underline">
+                        <i class="fas fa-user-plus mr-1"></i>成员已有账号？点击加入
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 实时更新提示 -->
+    <div id="liveToast" class="live-toast">
+        <i class="fas fa-broadcast-tower mr-2"></i>
+        <span id="liveText">数据已同步</span>
+    </div>
+
+    <!-- 主应用 -->
+    <div id="mainApp" class="hidden">
+        <header class="glass-panel sticky top-0 z-50 border-b border-slate-700">
+            <div class="max-w-7xl mx-auto px-4 py-3">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-snowflake text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold text-white">LabVault</h1>
+                            <p class="text-xs text-slate-400" id="modeSubtitle">实时协作版</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                        <div id="syncStatus" class="live-indicator">
+                            <i class="fas fa-wifi"></i>
+                            <span>实时协作中</span>
+                        </div>
+                        <div id="onlineUsers" class="flex pl-2">
+                            <div class="user-avatar" title="我">我</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-slate-400" id="userDisplay">用户</span>
+                        <button onclick="app.showInvite()" class="btn btn-success text-sm">
+                            <i class="fas fa-user-plus"></i> 邀请成员
+                        </button>
+                        <button onclick="app.exportData()" class="btn bg-slate-700 text-white hover:bg-slate-600 text-sm">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 py-6">
+            <!-- 搜索栏 -->
+            <div class="glass-panel rounded-xl p-4 mb-6">
+                <div class="relative max-w-2xl mx-auto">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" oninput="app.searchSamples()" 
+                           class="w-full pl-12 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                           placeholder="搜索样品名称、编号、类型...">
+                </div>
+                <div id="searchResults" class="hidden mt-4 max-h-64 overflow-y-auto bg-slate-900 rounded-lg border border-slate-700 p-3"></div>
+            </div>
+
+            <!-- 视图切换 -->
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div class="view-toggle">
+                    <button class="view-btn active" onclick="app.switchView('fridge')" id="btnFridgeView">
+                        <i class="fas fa-th-large"></i> 冰箱视图
+                    </button>
+                    <button class="view-btn" onclick="app.switchView('directory')" id="btnDirectoryView">
+                        <i class="fas fa-list-alt"></i> 目录视图
+                    </button>
+                </div>
+            </div>
+
+            <!-- 冰箱视图 -->
+            <div id="fridgeView" class="fridge-view">
+                <div id="fridgeContainer"></div>
+            </div>
+
+            <!-- 目录视图 -->
+            <div id="directoryView" class="directory-view hidden">
+                <div class="toolbar">
+                    <button class="toolbar-btn" onclick="app.exportDirData()">
+                        <i class="fas fa-download"></i> 导出目录
+                    </button>
+                    <button class="toolbar-btn" onclick="document.getElementById('importDirFile').click()">
+                        <i class="fas fa-upload"></i> 导入目录
+                    </button>
+                    <input type="file" id="importDirFile" class="hidden" accept=".json" onchange="app.importDirData(event)">
+                    <button class="toolbar-btn" onclick="app.clearDirData()">
+                        <i class="fas fa-trash"></i> 清空目录
+                    </button>
+                </div>
+
+                <div class="glass-panel rounded-xl p-4 mb-6">
+                    <div class="relative max-w-2xl mx-auto">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="dirSearchInput" class="form-input pl-12" placeholder="搜索当前冰箱目录内容..." oninput="app.searchDirectory()">
+                    </div>
+                </div>
+
+                <div id="directoryContainer" style="overflow-x: auto;"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 邀请模态框 -->
+    <div id="inviteModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="text-xl font-bold text-white"><i class="fas fa-user-plus mr-2"></i>邀请成员</h3>
+                <button onclick="app.closeModal('inviteModal')" class="text-slate-400 hover:text-white text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="text-slate-400 mb-4">让实验室成员扫码或访问链接即可加入协作</p>
+                
+                <div class="bg-white p-4 rounded-lg inline-block mb-4">
+                    <div id="inviteQR" style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; color: #334155;">
+                        生成中...
+                    </div>
+                </div>
+                
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="inviteLink" class="form-input text-sm" readonly>
+                    <button onclick="app.copyInviteLink()" class="btn btn-primary whitespace-nowrap">
+                        <i class="fas fa-copy"></i> 复制
+                    </button>
+                </div>
+                
+                <div class="text-xs text-slate-500">
+                    <i class="fas fa-shield-alt mr-1"></i>
+                    链接包含环境 ID，成员无需配置即可使用
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 目录编辑模态框 -->
+    <div id="dirEditModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <div>
+                    <div class="text-xl font-bold text-white">编辑盒子内容</div>
+                    <div class="text-sm text-slate-400" id="dirEditLocation">位置: L1-R1-D1-B1</div>
+                </div>
+                <button onclick="app.closeModal('dirEditModal')" class="text-slate-400 hover:text-white text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">内容描述（支持多行，每行一个样品）</label>
+                    <textarea class="form-input" id="dirEditContent" rows="6" placeholder="输入样品信息..."></textarea>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button onclick="app.closeModal('dirEditModal')" class="btn bg-slate-700 text-white">取消</button>
+                    <button onclick="app.saveDirContent()" class="btn btn-primary">
+                        <i class="fas fa-check"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 样品管理模态框 -->
+    <div id="sampleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modalTitle" class="text-xl font-bold text-white">样品管理</h2>
+                    <p id="modalSubtitle" class="text-sm text-slate-400">位置: L1-R1-D1-B1</p>
+                </div>
+                <button onclick="app.closeModal('sampleModal')" class="text-slate-400 hover:text-white text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="boxSelection" class="grid grid-cols-5 gap-4 mb-6"></div>
+
+                <div id="plateSection" class="hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-4">
+                            <select id="wellCount" onchange="app.changePlateSize()" class="form-select w-auto">
+                                <option value="81">81孔 (9×9)</option>
+                                <option value="9">9孔 (3×3)</option>
+                            </select>
+                            <button onclick="app.backToBoxes()" class="text-blue-400 hover:text-blue-300 text-sm">
+                                <i class="fas fa-arrow-left mr-1"></i> 返回
+                            </button>
+                        </div>
+                        <div class="text-sm text-slate-400">
+                            已选: <span id="selectedWellCoord" class="text-white font-bold">-</span>
+                        </div>
+                    </div>
+
+                    <div id="plateGrid" class="plate-grid plate-81"></div>
+
+                    <div id="sampleForm" class="mt-6 p-4 bg-slate-800/50 rounded-lg border border-slate-700 hidden">
+                        <h4 class="font-semibold text-white mb-4">样品信息</h4>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="form-group">
+                                <label class="form-label">样品名称 *</label>
+                                <input type="text" id="sName" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">编号</label>
+                                <input type="text" id="sCode" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">类型</label>
+                                <input type="text" id="sType" class="form-input" placeholder="如：细胞、质粒、血清...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">日期</label>
+                                <input type="date" id="sDate" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">体积 (μL)</label>
+                                <input type="text" id="sVolume" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">质量</label>
+                                <select id="sQuality" class="form-select">
+                                    <option value="">请选择</option>
+                                    <option value="excellent">优</option>
+                                    <option value="good">良</option>
+                                    <option value="fair">一般</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">备注</label>
+                            <textarea id="sNote" class="form-input" rows="2"></textarea>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="app.saveSample()" class="btn btn-success">
+                                <i class="fas fa-check"></i> 保存
+                            </button>
+                            <button onclick="app.deleteSample()" class="btn btn-danger hidden" id="btnDelete">
+                                <i class="fas fa-trash"></i> 删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class LabVaultCloud {
+            constructor() {
+                this.ENV_ID = 'labvault-5gkypu3d85c31295';
+                this.app = null;
+                this.db = null;
+                this.watchers = [];
+                this.isLocalMode = false;
+                
+                this.config = {
+                    userName: localStorage.getItem('lv_user_name') || '',
+                    layers: 4,
+                    racksPerLayer: 5,
+                    drawersPerRack: 5,
+                    boxesPerDrawer: 5
+                };
+                
+                this.state = {
+                    initialized: false,
+                    currentView: 'fridge',
+                    currentLayer: 1,
+                    currentRack: 1,
+                    currentDrawer: 1,
+                    currentBox: 1,
+                    selectedWell: null,
+                    samples: [],
+                    dirData: {},
+                    onlineUsers: [],
+                    editingDir: null
+                };
+
+                this.checkSetup();
+            }
+
+            checkSetup() {
+                if (!this.config.userName) {
+                    document.getElementById('setupWizard').classList.remove('hidden');
+                    document.getElementById('mainApp').classList.add('hidden');
+                } else {
+                    this.showLocalModeOption();
+                }
+            }
+
+            showLocalModeOption() {
+                document.getElementById('setupWizard').classList.remove('hidden');
+                document.getElementById('mainApp').classList.add('hidden');
+            }
+
+            // ==================== 诊断功能 ====================
+
+            async runDiagnostics() {
+                const panel = document.getElementById('diagnosticPanel');
+                const content = document.getElementById('diagnosticContent');
+                panel.classList.remove('hidden');
+                
+                content.innerHTML = '<div class="text-slate-400">正在运行诊断...</div>';
+                
+                const results = [];
+                
+                // 测试1: 检查浏览器
+                results.push({
+                    name: '浏览器环境',
+                    status: 'ok',
+                    msg: '正常'
+                });
+                
+                // 测试2: 检查网络
+                try {
+                    const response = await fetch('https://www.baidu.com', { mode: 'no-cors' });
+                    results.push({
+                        name: '网络连接',
+                        status: 'ok',
+                        msg: '正常'
+                    });
+                } catch (e) {
+                    results.push({
+                        name: '网络连接',
+                        status: 'error',
+                        msg: '无法连接互联网'
+                    });
+                }
+                
+                // 测试3: 检查腾讯云SDK
+                if (typeof window.tcb !== 'undefined') {
+                    results.push({
+                        name: '腾讯云SDK',
+                        status: 'ok',
+                        msg: '已加载'
+                    });
+                } else {
+                    results.push({
+                        name: '腾讯云SDK',
+                        status: 'error',
+                        msg: '未加载'
+                    });
+                }
+                
+                // 测试4: 尝试初始化
+                try {
+                    const testApp = window.tcb.init({ env: this.ENV_ID });
+                    results.push({
+                        name: '环境初始化',
+                        status: 'ok',
+                        msg: '成功'
+                    });
+                    
+                    // 测试5: 尝试匿名登录
+                    try {
+                        await testApp.auth().anonymousAuthProvider().signIn();
+                        results.push({
+                            name: '匿名登录',
+                            status: 'ok',
+                            msg: '成功'
+                        });
+                    } catch (e) {
+                        results.push({
+                            name: '匿名登录',
+                            status: 'error',
+                            msg: e.message || '失败'
+                        });
+                    }
+                } catch (e) {
+                    results.push({
+                        name: '环境初始化',
+                        status: 'error',
+                        msg: e.message || '失败'
+                    });
+                }
+                
+                // 显示结果
+                content.innerHTML = results.map(r => `
+                    <div class="diagnostic-item">
+                        <span>${r.name}</span>
+                        <span class="${r.status === 'ok' ? 'status-ok' : r.status === 'warn' ? 'status-warn' : 'status-error'}">
+                            ${r.status === 'ok' ? '✓' : r.status === 'warn' ? '!' : '✗'} ${r.msg}
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            useLocalMode() {
+                const name = document.getElementById('setupName').value.trim();
+                if (!name) {
+                    alert('请输入您的姓名');
+                    return;
+                }
+                
+                this.config.userName = name;
+                localStorage.setItem('lv_user_name', name);
+                this.isLocalMode = true;
+                
+                const localSamples = localStorage.getItem('labvault_local_samples');
+                const localDir = localStorage.getItem('labvault_local_dir');
+                
+                if (localSamples) {
+                    this.state.samples = JSON.parse(localSamples);
+                }
+                if (localDir) {
+                    this.state.dirData = JSON.parse(localDir);
+                }
+                
+                this.startLocal();
+            }
+
+            startLocal() {
+                document.getElementById('setupWizard').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                document.getElementById('userDisplay').textContent = this.config.userName;
+                document.getElementById('modeSubtitle').textContent = '本地模式（数据仅本机存储）';
+                
+                const status = document.getElementById('syncStatus');
+                status.className = 'local-indicator';
+                status.innerHTML = '<i class="fas fa-desktop"></i><span>本地模式</span>';
+                
+                this.renderFridgeView();
+                this.showToast('已进入本地模式，功能完整可用');
+            }
+
+            async initialize() {
+                const name = document.getElementById('setupName').value.trim();
+                if (!name) {
+                    alert('请输入您的姓名');
+                    return;
+                }
+
+                this.config.userName = name;
+                localStorage.setItem('lv_user_name', name);
+
+                try {
+                    this.app = window.tcb.init({
+                        env: this.ENV_ID
+                    });
+                    
+                    this.db = this.app.database();
+                    
+                    // 添加超时处理
+                    const loginPromise = this.app.auth().anonymousAuthProvider().signIn();
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('连接超时，请检查网络')), 10000);
+                    });
+                    
+                    await Promise.race([loginPromise, timeoutPromise]);
+                    
+                    this.state.initialized = true;
+                    this.isLocalMode = false;
+                    
+                    await this.initData();
+                    this.startRealtimeSync();
+                    
+                    document.getElementById('setupWizard').classList.add('hidden');
+                    document.getElementById('mainApp').classList.remove('hidden');
+                    document.getElementById('userDisplay').textContent = this.config.userName;
+                    
+                    this.renderFridgeView();
+                    this.showToast('连接成功！开始实时协作');
+                    
+                } catch (error) {
+                    console.error('连接失败:', error);
+                    this.showError('连接失败：' + error.message);
+                    
+                    // 显示诊断建议
+                    const panel = document.getElementById('diagnosticPanel');
+                    const content = document.getElementById('diagnosticContent');
+                    panel.classList.remove('hidden');
+                    content.innerHTML = `
+                        <div class="diagnostic-item">
+                            <span>错误类型</span>
+                            <span class="status-error">${error.message}</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span>建议解决方案</span>
+                        </div>
+                        <div class="text-slate-400 text-sm mt-2">
+                            1. 刷新页面重试<br>
+                            2. 使用本地服务器运行（Python: python -m http.server 8000）<br>
+                            3. 切换到本地模式继续使用<br>
+                            4. 检查腾讯云控制台"身份认证-匿名登录"是否开启
+                        </div>
+                    `;
+                }
+            }
+
+            showError(msg) {
+                const errorDiv = document.getElementById('errorMsg');
+                errorDiv.textContent = msg;
+                errorDiv.classList.remove('hidden');
+            }
+
+            async initData() {
+                const fridge = await this.db.collection('fridges').doc('main').get();
+                if (!fridge.data) {
+                    await this.db.collection('fridges').doc('main').set({
+                        name: '-80℃冰箱 #1',
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    });
+                }
+            }
+
+            startRealtimeSync() {
+                this.db.collection('samples').watch({
+                    onChange: (snapshot) => {
+                        this.state.samples = snapshot.docs.map(doc => ({
+                            id: doc.docId,
+                            ...doc.data
+                        }));
+                        this.renderCurrentView();
+                        
+                        const hasRemote = snapshot.docChanges.some(c => 
+                            c.data.updatedBy !== this.config.userName
+                        );
+                        if (hasRemote) {
+                            const changer = snapshot.docChanges.find(c => 
+                                c.data.updatedBy !== this.config.userName
+                            );
+                            if (changer) this.showToast(`${changer.data.updatedBy} 更新了数据`);
+                        }
+                    },
+                    onError: (err) => console.error('监听错误:', err)
+                });
+
+                this.db.collection('presence').doc(this.config.userName).set({
+                    name: this.config.userName,
+                    online: true,
+                    lastSeen: new Date()
+                });
+
+                setInterval(() => {
+                    this.db.collection('presence').doc(this.config.userName).update({
+                        lastSeen: new Date()
+                    });
+                }, 30000);
+
+                this.db.collection('presence').where('online', '==', true).watch({
+                    onChange: (snapshot) => {
+                        this.state.onlineUsers = snapshot.docs
+                            .map(d => d.data)
+                            .filter(u => u.name !== this.config.userName);
+                        this.updateOnlineUsersUI();
+                    }
+                });
+            }
+
+            switchView(view) {
+                this.state.currentView = view;
+                
+                document.getElementById('btnFridgeView').classList.toggle('active', view === 'fridge');
+                document.getElementById('btnDirectoryView').classList.toggle('active', view === 'directory');
+                document.getElementById('fridgeView').classList.toggle('hidden', view !== 'fridge');
+                document.getElementById('directoryView').classList.toggle('hidden', view !== 'directory');
+                
+                if (view === 'fridge') {
+                    this.renderFridgeView();
+                } else {
+                    this.renderDirectoryView();
+                }
+            }
+
+            renderCurrentView() {
+                if (this.state.currentView === 'fridge') {
+                    this.renderFridgeView();
+                } else {
+                    this.renderDirectoryView();
+                }
+            }
+
+            renderFridgeView() {
+                const container = document.getElementById('fridgeContainer');
+                container.innerHTML = '';
+
+                for (let layer = 1; layer <= this.config.layers; layer++) {
+                    const layerSamples = this.state.samples.filter(s => s.location.startsWith(`L${layer}`));
+                    
+                    const layerDiv = document.createElement('div');
+                    layerDiv.className = 'fridge-container';
+                    layerDiv.innerHTML = `
+                        <div class="layer-header">
+                            <span><i class="fas fa-layer-group mr-2"></i>第 ${layer} 层</span>
+                            <span class="text-sm font-normal bg-black/30 px-3 py-1 rounded-full">${layerSamples.length} 个样品</span>
+                        </div>
+                        <div class="rack-row" id="layer-${layer}"></div>
+                    `;
+                    
+                    container.appendChild(layerDiv);
+                    
+                    const rackRow = layerDiv.querySelector('.rack-row');
+                    for (let rack = 1; rack <= this.config.racksPerLayer; rack++) {
+                        const rackDiv = document.createElement('div');
+                        rackDiv.className = 'rack';
+                        rackDiv.innerHTML = `<div class="rack-title">架 ${rack}</div>`;
+                        
+                        for (let drawer = 1; drawer <= this.config.drawersPerRack; drawer++) {
+                            const location = `L${layer}R${rack}D${drawer}`;
+                            const samples = this.state.samples.filter(s => s.location.startsWith(location));
+                            const dirContent = this.state.dirData[location];
+                            
+                            const drawerDiv = document.createElement('div');
+                            drawerDiv.className = `drawer ${samples.length > 0 ? 'has-data' : ''}`;
+                            drawerDiv.innerHTML = `
+                                <div class="drawer-number">${drawer}</div>
+                                ${dirContent ? `<div class="drawer-name">${dirContent.split('\n')[0]}</div>` : ''}
+                                ${samples.length > 0 ? `<div class="drawer-count">${samples.length}</div>` : ''}
+                            `;
+                            drawerDiv.onclick = () => this.openDrawer(layer, rack, drawer);
+                            rackDiv.appendChild(drawerDiv);
+                        }
+                        
+                        rackRow.appendChild(rackDiv);
+                    }
+                }
+            }
+
+            renderDirectoryView() {
+                const container = document.getElementById('directoryContainer');
+                
+                let html = '<table class="inventory-table">';
+                html += '<thead><tr><th style="width: 100px;">位置</th>';
+                for (let r = 1; r <= this.config.racksPerLayer; r++) {
+                    html += `<th>第 ${r} 列</th>`;
+                }
+                html += '</tr></thead><tbody>';
+
+                for (let layer = 1; layer <= this.config.layers; layer++) {
+                    html += `<tr><td colspan="${this.config.racksPerLayer + 1}" class="dir-layer-header">`;
+                    html += `<i class="fas fa-layer-group" style="margin-right: 8px;"></i>第 ${layer} 层`;
+                    html += '</td></tr>';
+                    
+                    for (let drawer = 1; drawer <= this.config.drawersPerRack; drawer++) {
+                        html += '<tr>';
+                        html += `<td class="dir-row-header">第 ${drawer} 排</td>`;
+                        
+                        for (let rack = 1; rack <= this.config.racksPerLayer; rack++) {
+                            html += '<td>';
+                            html += '<div class="box-list">';
+                            
+                            for (let box = 1; box <= this.config.boxesPerDrawer; box++) {
+                                const key = `L${layer}R${rack}D${drawer}B${box}`;
+                                const content = this.state.dirData[key] || '';
+                                const isEmpty = !content;
+                                
+                                html += `
+                                    <div class="box-item ${isEmpty ? 'empty' : ''}" 
+                                         onclick="app.handleDirBoxClick(${layer}, ${rack}, ${drawer}, ${box})"
+                                         data-dir-key="${key}">
+                                        <div class="box-number">${box}</div>
+                                        <div class="box-content">${isEmpty ? '点击编辑...' : this.escapeHtml(content)}</div>
+                                    </div>
+                                `;
+                            }
+                            
+                            html += '</div>';
+                            html += '</td>';
+                        }
+                        
+                        html += '</tr>';
+                    }
+                }
+                
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            }
+
+            handleDirBoxClick(layer, rack, drawer, box) {
+                this.state.editingDir = { layer, rack, drawer, box };
+                const key = `L${layer}R${rack}D${drawer}B${box}`;
+                const content = this.state.dirData[key] || '';
+                
+                document.getElementById('dirEditLocation').textContent = `位置: 第${layer}层-第${rack}列-第${drawer}排-盒子${box}`;
+                document.getElementById('dirEditContent').value = content;
+                document.getElementById('dirEditModal').classList.add('active');
+                
+                setTimeout(() => {
+                    document.getElementById('dirEditContent').focus();
+                    document.getElementById('dirEditContent').select();
+                }, 100);
+            }
+
+            saveDirContent() {
+                if (!this.state.editingDir) return;
+                
+                const { layer, rack, drawer, box } = this.state.editingDir;
+                const key = `L${layer}R${rack}D${drawer}B${box}`;
+                const content = document.getElementById('dirEditContent').value;
+                
+                if (content.trim()) {
+                    this.state.dirData[key] = content.trim();
+                } else {
+                    delete this.state.dirData[key];
+                }
+                
+                if (this.isLocalMode) {
+                    localStorage.setItem('labvault_local_dir', JSON.stringify(this.state.dirData));
+                } else {
+                    this.saveDirToCloud(key, content);
+                }
+                
+                this.renderDirectoryView();
+                this.closeModal('dirEditModal');
+                this.showToast('目录已保存');
+                
+                if (this.state.currentView === 'fridge') {
+                    this.renderFridgeView();
+                }
+            }
+
+            async saveDirToCloud(key, content) {
+                try {
+                    await this.db.collection('directories').doc(key).set({
+                        content: content,
+                        updatedBy: this.config.userName,
+                        updatedAt: new Date()
+                    });
+                } catch (e) {
+                    console.error('保存目录到云端失败:', e);
+                }
+            }
+
+            escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML.replace(/\n/g, '<br>');
+            }
+
+            searchDirectory() {
+                const query = document.getElementById('dirSearchInput').value.trim().toLowerCase();
+                
+                document.querySelectorAll('.box-item').forEach(el => {
+                    el.classList.remove('highlight');
+                });
+                
+                if (!query) return;
+                
+                document.querySelectorAll('.box-item').forEach(el => {
+                    const key = el.getAttribute('data-dir-key');
+                    const content = this.state.dirData[key] || '';
+                    
+                    if (content.toLowerCase().includes(query) || key.toLowerCase().includes(query)) {
+                        el.classList.add('highlight');
+                    }
+                });
+            }
+
+            exportDirData() {
+                const exportObj = {
+                    version: '1.0',
+                    date: new Date().toISOString(),
+                    data: this.state.dirData
+                };
+                this.downloadJSON(exportObj, `labvault_directory_${new Date().toISOString().slice(0,10)}.json`);
+                this.showToast('目录已导出');
+            }
+
+            importDirData(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        if (imported.data && typeof imported.data === 'object') {
+                            if (confirm(`导入将覆盖 ${Object.keys(this.state.dirData).length} 条现有记录，是否继续？`)) {
+                                this.state.dirData = imported.data;
+                                if (this.isLocalMode) {
+                                    localStorage.setItem('labvault_local_dir', JSON.stringify(this.state.dirData));
+                                }
+                                this.renderDirectoryView();
+                                this.showToast('目录导入成功');
+                            }
+                        }
+                    } catch (err) {
+                        alert('导入失败：格式错误');
+                    }
+                };
+                reader.readAsText(file);
+                event.target.value = '';
+            }
+
+            clearDirData() {
+                if (confirm('确定要清空所有目录数据吗？此操作不可恢复！')) {
+                    this.state.dirData = {};
+                    if (this.isLocalMode) {
+                        localStorage.setItem('labvault_local_dir', JSON.stringify(this.state.dirData));
+                    }
+                    this.renderDirectoryView();
+                    this.showToast('目录已清空');
+                }
+            }
+
+            openDrawer(layer, rack, drawer) {
+                this.state.currentLayer = layer;
+                this.state.currentRack = rack;
+                this.state.currentDrawer = drawer;
+                
+                document.getElementById('modalTitle').textContent = `第${layer}层 - 架${rack} - 抽屉${drawer}`;
+                document.getElementById('boxSelection').classList.remove('hidden');
+                document.getElementById('plateSection').classList.add('hidden');
+                
+                this.renderBoxSelection();
+                document.getElementById('sampleModal').classList.add('active');
+            }
+
+            renderBoxSelection() {
+                const container = document.getElementById('boxSelection');
+                container.innerHTML = '';
+                
+                for (let box = 1; box <= this.config.boxesPerDrawer; box++) {
+                    const location = `L${this.state.currentLayer}R${this.state.currentRack}D${this.state.currentDrawer}B${box}`;
+                    const samples = this.state.samples.filter(s => s.location.startsWith(location));
+                    
+                    const div = document.createElement('div');
+                    div.className = `p-4 rounded-lg border-2 cursor-pointer transition ${samples.length > 0 ? 'bg-green-900/30 border-green-600' : 'bg-slate-800 border-slate-600 hover:border-blue-500'}`;
+                    div.innerHTML = `
+                        <div class="text-2xl font-bold ${samples.length > 0 ? 'text-green-400' : 'text-slate-400'}">${box}</div>
+                        <div class="text-xs ${samples.length > 0 ? 'text-green-300' : 'text-slate-500'} mt-1">${samples.length} 个样品</div>
+                    `;
+                    div.onclick = () => this.openBox(box);
+                    container.appendChild(div);
+                }
+            }
+
+            openBox(box) {
+                this.state.currentBox = box;
+                document.getElementById('boxSelection').classList.add('hidden');
+                document.getElementById('plateSection').classList.remove('hidden');
+                this.renderPlate();
+            }
+
+            backToBoxes() {
+                document.getElementById('plateSection').classList.add('hidden');
+                document.getElementById('boxSelection').classList.remove('hidden');
+            }
+
+            changePlateSize() {
+                this.renderPlate();
+            }
+
+            renderPlate() {
+                const grid = document.getElementById('plateGrid');
+                const wellCount = parseInt(document.getElementById('wellCount').value);
+                const location = `L${this.state.currentLayer}R${this.state.currentRack}D${this.state.currentDrawer}B${this.state.currentBox}`;
+                
+                grid.className = `plate-grid plate-${wellCount}`;
+                grid.innerHTML = '';
+                
+                const cols = wellCount === 81 ? 9 : 3;
+                
+                for (let i = 0; i < wellCount; i++) {
+                    const row = Math.floor(i / cols);
+                    const col = (i % cols) + 1;
+                    const coord = `${String.fromCharCode(65 + row)}${col}`;
+                    const fullLocation = `${location}W${i + 1}`;
+                    const sample = this.state.samples.find(s => s.location === fullLocation);
+                    
+                    const well = document.createElement('div');
+                    well.className = `well ${sample ? 'occupied' : ''} ${this.state.selectedWell === i ? 'selected' : ''}`;
+                    well.innerHTML = `
+                        <div class="well-coord">${coord}</div>
+                        ${sample ? `<div class="well-name" title="${sample.name}">${sample.name}</div>` : ''}
+                    `;
+                    well.onclick = () => this.selectWell(i, coord, sample);
+                    grid.appendChild(well);
+                }
+            }
+
+            selectWell(index, coord, sample) {
+                this.state.selectedWell = index;
+                document.querySelectorAll('.well').forEach((w, i) => {
+                    w.classList.toggle('selected', i === index);
+                });
+                
+                document.getElementById('selectedWellCoord').textContent = coord;
+                document.getElementById('sampleForm').classList.remove('hidden');
+                
+                if (sample) {
+                    document.getElementById('sName').value = sample.name || '';
+                    document.getElementById('sCode').value = sample.code || '';
+                    document.getElementById('sType').value = sample.type || '';
+                    document.getElementById('sDate').value = sample.date || '';
+                    document.getElementById('sVolume').value = sample.volume || '';
+                    document.getElementById('sQuality').value = sample.quality || '';
+                    document.getElementById('sNote').value = sample.note || '';
+                    document.getElementById('btnDelete').classList.remove('hidden');
+                } else {
+                    this.clearForm();
+                    document.getElementById('btnDelete').classList.add('hidden');
+                }
+            }
+
+            clearForm() {
+                ['sName', 'sCode', 'sType', 'sDate', 'sVolume', 'sQuality', 'sNote'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+            }
+
+            async saveSample() {
+                const name = document.getElementById('sName').value.trim();
+                if (!name) {
+                    alert('请输入样品名称');
+                    return;
+                }
+
+                const location = `L${this.state.currentLayer}R${this.state.currentRack}D${this.state.currentDrawer}B${this.state.currentBox}W${this.state.selectedWell + 1}`;
+                
+                const sampleData = {
+                    location,
+                    name,
+                    code: document.getElementById('sCode').value,
+                    type: document.getElementById('sType').value,
+                    date: document.getElementById('sDate').value,
+                    volume: document.getElementById('sVolume').value,
+                    quality: document.getElementById('sQuality').value,
+                    note: document.getElementById('sNote').value,
+                    updatedBy: this.config.userName,
+                    updatedAt: new Date().toISOString()
+                };
+
+                if (this.isLocalMode) {
+                    const existingIndex = this.state.samples.findIndex(s => s.location === location);
+                    if (existingIndex >= 0) {
+                        this.state.samples[existingIndex] = sampleData;
+                    } else {
+                        this.state.samples.push(sampleData);
+                    }
+                    localStorage.setItem('labvault_local_samples', JSON.stringify(this.state.samples));
+                    this.renderCurrentView();
+                    this.renderPlate();
+                    this.showToast('保存成功（本地）');
+                    document.getElementById('btnDelete').classList.remove('hidden');
+                } else {
+                    try {
+                        const existing = await this.db.collection('samples').where('location', '==', location).get();
+                        
+                        if (existing.data.length > 0) {
+                            await this.db.collection('samples').doc(existing.data[0]._id).update(sampleData);
+                        } else {
+                            await this.db.collection('samples').add(sampleData);
+                        }
+
+                        this.showToast('保存成功');
+                        document.getElementById('btnDelete').classList.remove('hidden');
+                    } catch (error) {
+                        console.error('保存失败:', error);
+                        alert('保存失败：' + error.message);
+                    }
+                }
+            }
+
+            async deleteSample() {
+                if (!confirm('确定删除此样品？')) return;
+                
+                const location = `L${this.state.currentLayer}R${this.state.currentRack}D${this.state.currentDrawer}B${this.state.currentBox}W${this.state.selectedWell + 1}`;
+                
+                if (this.isLocalMode) {
+                    this.state.samples = this.state.samples.filter(s => s.location !== location);
+                    localStorage.setItem('labvault_local_samples', JSON.stringify(this.state.samples));
+                    this.renderCurrentView();
+                    this.renderPlate();
+                    this.clearForm();
+                    document.getElementById('btnDelete').classList.add('hidden');
+                    this.showToast('删除成功');
+                } else {
+                    try {
+                        const existing = await this.db.collection('samples').where('location', '==', location).get();
+                        if (existing.data.length > 0) {
+                            await this.db.collection('samples').doc(existing.data[0]._id).remove();
+                        }
+                        this.clearForm();
+                        document.getElementById('btnDelete').classList.add('hidden');
+                        this.showToast('删除成功');
+                    } catch (error) {
+                        console.error('删除失败:', error);
+                    }
+                }
+            }
+
+            showInvite() {
+                const link = `${window.location.origin}${window.location.pathname}?env=${this.ENV_ID}`;
+                document.getElementById('inviteLink').value = link;
+                
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(link)}`;
+                document.getElementById('inviteQR').innerHTML = `<img src="${qrUrl}" alt="QR">`;
+                
+                document.getElementById('inviteModal').classList.add('active');
+            }
+
+            copyInviteLink() {
+                const input = document.getElementById('inviteLink');
+                input.select();
+                document.execCommand('copy');
+                this.showToast('链接已复制');
+            }
+
+            searchSamples() {
+                const query = document.getElementById('searchInput').value.trim().toLowerCase();
+                const resultsDiv = document.getElementById('searchResults');
+                
+                if (!query) {
+                    resultsDiv.classList.add('hidden');
+                    return;
+                }
+
+                const matches = this.state.samples.filter(s => 
+                    (s.name && s.name.toLowerCase().includes(query)) ||
+                    (s.code && s.code.toLowerCase().includes(query)) ||
+                    (s.type && s.type.toLowerCase().includes(query))
+                );
+
+                if (matches.length === 0) {
+                    resultsDiv.innerHTML = '<div class="text-slate-500 text-center py-4">未找到匹配结果</div>';
+                } else {
+                    resultsDiv.innerHTML = matches.map(s => {
+                        const match = s.location.match(/L(\d+)R(\d+)D(\d+)B(\d+)W(\d+)/);
+                        const pos = match ? `第${match[1]}层-架${match[2]}-抽屉${match[3]}-盒${match[4]}` : s.location;
+                        return `
+                            <div class="p-3 hover:bg-slate-800 rounded cursor-pointer border-b border-slate-800 last:border-0" onclick="app.navigateToSample('${s.location}')">
+                                <div class="font-medium text-white">${s.name}</div>
+                                <div class="text-sm text-slate-400">${s.type || '未分类'} | ${pos}</div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                resultsDiv.classList.remove('hidden');
+            }
+
+            navigateToSample(location) {
+                const match = location.match(/L(\d+)R(\d+)D(\d+)B(\d+)W(\d+)/);
+                if (match) {
+                    const [, l, r, d, b, w] = match;
+                    document.getElementById('searchResults').classList.add('hidden');
+                    this.switchView('fridge');
+                    setTimeout(() => {
+                        this.openDrawer(parseInt(l), parseInt(r), parseInt(d));
+                        setTimeout(() => {
+                            this.openBox(parseInt(b));
+                            setTimeout(() => this.selectWell(parseInt(w)-1, `${String.fromCharCode(65 + Math.floor((w-1)/9))}${((w-1)%9)+1}`, this.state.samples.find(s => s.location === location)), 100);
+                        }, 100);
+                    }, 100);
+                }
+            }
+
+            updateOnlineUsersUI() {
+                const container = document.getElementById('onlineUsers');
+                const others = this.state.onlineUsers.map(u => `
+                    <div class="user-avatar" title="${u.name}">${u.name[0]}</div>
+                `).join('');
+                
+                container.innerHTML = `<div class="user-avatar" title="我（${this.config.userName}）">我</div>` + others;
+            }
+
+            showToast(message) {
+                const toast = document.getElementById('liveToast');
+                document.getElementById('liveText').textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+
+            closeModal(id) {
+                document.getElementById(id).classList.remove('active');
+            }
+
+            downloadJSON(data, filename) {
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            exportData() {
+                const data = {
+                    exportTime: new Date().toISOString(),
+                    exportedBy: this.config.userName,
+                    samples: this.state.samples,
+                    dirData: this.state.dirData,
+                    mode: this.isLocalMode ? 'local' : 'cloud'
+                };
+                this.downloadJSON(data, `labvault_backup_${new Date().toISOString().slice(0,10)}.json`);
+                this.showToast('数据已导出');
+            }
+        }
+
+        const app = new LabVaultCloud();
+    </script>
+</body>
+</html>
