@@ -386,6 +386,71 @@
         .status-ok { color: #10b981; }
         .status-error { color: #ef4444; }
         .status-warn { color: #f59e0b; }
+
+        /* 登录标签页样式 */
+        .login-tabs {
+            display: flex;
+            gap: 4px;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 4px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .login-tab {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .login-tab.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .account-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: 8px;
+        }
+
+        .account-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .account-item:hover {
+            background: rgba(51, 65, 85, 0.8);
+            border: 1px solid #3b82f6;
+        }
+
+        .account-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .account-role {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
     </style>
 </head>
 <body>
@@ -393,7 +458,7 @@
     <!-- 初始化向导 -->
     <div id="setupWizard" class="setup-wizard">
         <div class="glass-panel rounded-2xl p-8 w-full max-w-lg">
-            <div class="text-center mb-8">
+            <div class="text-center mb-6">
                 <div class="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-snowflake text-white text-3xl"></i>
                 </div>
@@ -403,50 +468,102 @@
 
             <div id="errorMsg" class="error-banner hidden"></div>
 
-            <div class="space-y-6">
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-2">您的姓名</label>
-                    <input type="text" id="setupName" class="form-input" placeholder="例如：张博士" value="">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-2">环境 ID（已预填）</label>
-                    <input type="text" id="setupEnvId" class="form-input text-slate-500" value="labvault-5gkypu3d85c31295" readonly>
-                </div>
+            <!-- 登录方式切换 -->
+            <div class="login-tabs">
+                <button class="login-tab active" onclick="app.switchLoginTab('password')" id="tabPassword">
+                    <i class="fas fa-user-lock mr-2"></i>账号登录
+                </button>
+                <button class="login-tab" onclick="app.switchLoginTab('local')" id="tabLocal">
+                    <i class="fas fa-desktop mr-2"></i>本地模式
+                </button>
+            </div>
 
-                <div class="bg-amber-900/30 border border-amber-700 rounded-lg p-4">
-                    <h4 class="font-semibold text-amber-200 mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>连接问题？</h4>
-                    <ul class="text-sm text-amber-100 space-y-1 list-disc list-inside">
-                        <li>确保已开启腾讯云"身份认证-匿名登录"</li>
-                        <li>建议使用本地服务器运行（见下方按钮）</li>
-                        <li>或先使用本地模式体验功能</li>
-                    </ul>
-                </div>
+            <!-- 账号密码登录 -->
+            <div id="passwordLoginSection">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">邮箱账号</label>
+                        <input type="email" id="loginEmail" class="form-input" placeholder="例如：lab1@labvault.com">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">密码</label>
+                        <input type="password" id="loginPassword" class="form-input" placeholder="输入密码">
+                    </div>
 
-                <!-- 诊断信息面板 -->
-                <div id="diagnosticPanel" class="diagnostic-panel hidden">
-                    <div class="diagnostic-title"><i class="fas fa-stethoscope mr-2"></i>诊断信息</div>
-                    <div id="diagnosticContent"></div>
-                </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">显示名称</label>
+                        <input type="text" id="loginName" class="form-input" placeholder="例如：张博士">
+                    </div>
 
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="app.initialize()" class="btn btn-primary justify-center py-3">
-                        <i class="fas fa-cloud"></i> 云端模式
-                    </button>
-                    <button onclick="app.useLocalMode()" class="btn btn-warning justify-center py-3">
-                        <i class="fas fa-desktop"></i> 本地模式
+                    <div class="bg-slate-800/50 rounded-lg p-4">
+                        <div class="text-sm text-slate-300 mb-2 font-medium">
+                            <i class="fas fa-users mr-2 text-blue-400"></i>快速选择预设账号
+                        </div>
+                        <div class="account-list">
+                            <div class="account-item" onclick="app.selectAccount('lab1@labvault.com', 'LabVault123', '成员1')">
+                                <div>
+                                    <div class="text-white font-medium">lab1@labvault.com</div>
+                                    <div class="text-xs text-slate-400">密码: LabVault123</div>
+                                </div>
+                                <span class="account-role">成员1</span>
+                            </div>
+                            <div class="account-item" onclick="app.selectAccount('lab2@labvault.com', 'LabVault123', '成员2')">
+                                <div>
+                                    <div class="text-white font-medium">lab2@labvault.com</div>
+                                    <div class="text-xs text-slate-400">密码: LabVault123</div>
+                                </div>
+                                <span class="account-role">成员2</span>
+                            </div>
+                            <div class="account-item" onclick="app.selectAccount('admin@labvault.com', 'Admin123', '管理员')">
+                                <div>
+                                    <div class="text-white font-medium">admin@labvault.com</div>
+                                    <div class="text-xs text-slate-400">密码: Admin123</div>
+                                </div>
+                                <span class="account-role" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">管理员</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="app.loginWithPassword()" class="btn btn-primary w-full justify-center py-3">
+                        <i class="fas fa-sign-in-alt"></i> 登录
                     </button>
                 </div>
-                
-                <div class="text-center space-y-2">
-                    <button onclick="app.runDiagnostics()" class="text-slate-400 text-sm hover:text-white underline">
-                        <i class="fas fa-bug mr-1"></i>运行诊断测试
-                    </button>
-                    <br>
-                    <button onclick="app.showInvite()" class="text-blue-400 text-sm hover:underline">
-                        <i class="fas fa-user-plus mr-1"></i>成员已有账号？点击加入
+            </div>
+
+            <!-- 本地模式 -->
+            <div id="localLoginSection" class="hidden">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">您的姓名</label>
+                        <input type="text" id="localName" class="form-input" placeholder="例如：张博士">
+                    </div>
+
+                    <div class="bg-amber-900/30 border border-amber-700 rounded-lg p-4">
+                        <h4 class="font-semibold text-amber-200 mb-2"><i class="fas fa-info-circle mr-2"></i>本地模式说明</h4>
+                        <ul class="text-sm text-amber-100 space-y-1 list-disc list-inside">
+                            <li>数据仅存储在当前浏览器</li>
+                            <li>无法与其他成员实时协作</li>
+                            <li>适合单机使用或测试功能</li>
+                        </ul>
+                    </div>
+
+                    <button onclick="app.useLocalMode()" class="btn btn-warning w-full justify-center py-3">
+                        <i class="fas fa-desktop"></i> 进入本地模式
                     </button>
                 </div>
+            </div>
+
+            <!-- 诊断信息面板 -->
+            <div id="diagnosticPanel" class="diagnostic-panel hidden">
+                <div class="diagnostic-title"><i class="fas fa-stethoscope mr-2"></i>诊断信息</div>
+                <div id="diagnosticContent"></div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button onclick="app.runDiagnostics()" class="text-slate-400 text-sm hover:text-white underline">
+                    <i class="fas fa-bug mr-1"></i>运行连接诊断
+                </button>
             </div>
         </div>
     </div>
@@ -489,6 +606,9 @@
                         </button>
                         <button onclick="app.exportData()" class="btn bg-slate-700 text-white hover:bg-slate-600 text-sm">
                             <i class="fas fa-download"></i>
+                        </button>
+                        <button onclick="app.logout()" class="btn bg-slate-700 text-white hover:bg-slate-600 text-sm" title="退出登录">
+                            <i class="fas fa-sign-out-alt"></i>
                         </button>
                     </div>
                 </div>
@@ -576,9 +696,27 @@
                     </button>
                 </div>
                 
-                <div class="text-xs text-slate-500">
+                <div class="text-xs text-slate-500 mb-4">
                     <i class="fas fa-shield-alt mr-1"></i>
                     链接包含环境 ID，成员无需配置即可使用
+                </div>
+
+                <div class="bg-slate-800 rounded-lg p-4 text-left">
+                    <div class="text-sm font-medium text-white mb-2">预设账号（已在腾讯云创建）：</div>
+                    <div class="space-y-2 text-xs text-slate-400">
+                        <div class="flex justify-between">
+                            <span>lab1@labvault.com</span>
+                            <span>密码: LabVault123</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>lab2@labvault.com</span>
+                            <span>密码: LabVault123</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>admin@labvault.com</span>
+                            <span>密码: Admin123</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -703,9 +841,11 @@
                 this.db = null;
                 this.watchers = [];
                 this.isLocalMode = false;
+                this.currentUser = null;
                 
                 this.config = {
                     userName: localStorage.getItem('lv_user_name') || '',
+                    userEmail: localStorage.getItem('lv_user_email') || '',
                     layers: 4,
                     racksPerLayer: 5,
                     drawersPerRack: 5,
@@ -730,17 +870,133 @@
             }
 
             checkSetup() {
-                if (!this.config.userName) {
+                // 检查是否已登录
+                const savedEmail = localStorage.getItem('lv_user_email');
+                const savedName = localStorage.getItem('lv_user_name');
+                
+                if (savedEmail && savedName) {
+                    // 自动登录
+                    this.config.userEmail = savedEmail;
+                    this.config.userName = savedName;
+                    this.autoLogin();
+                } else {
                     document.getElementById('setupWizard').classList.remove('hidden');
                     document.getElementById('mainApp').classList.add('hidden');
-                } else {
-                    this.showLocalModeOption();
                 }
             }
 
-            showLocalModeOption() {
-                document.getElementById('setupWizard').classList.remove('hidden');
-                document.getElementById('mainApp').classList.add('hidden');
+            async autoLogin() {
+                try {
+                    this.app = window.tcb.init({ env: this.ENV_ID });
+                    this.db = this.app.database();
+                    
+                    // 尝试恢复登录状态
+                    const auth = this.app.auth();
+                    const loginState = await auth.getLoginState();
+                    
+                    if (loginState) {
+                        // 已经登录
+                        this.currentUser = loginState.user;
+                        this.startCloudMode();
+                    } else {
+                        // 需要重新登录，显示登录界面
+                        document.getElementById('setupWizard').classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('自动登录失败:', error);
+                    document.getElementById('setupWizard').classList.remove('hidden');
+                }
+            }
+
+            switchLoginTab(tab) {
+                document.getElementById('tabPassword').classList.toggle('active', tab === 'password');
+                document.getElementById('tabLocal').classList.toggle('active', tab === 'local');
+                document.getElementById('passwordLoginSection').classList.toggle('hidden', tab !== 'password');
+                document.getElementById('localLoginSection').classList.toggle('hidden', tab !== 'local');
+            }
+
+            selectAccount(email, password, name) {
+                document.getElementById('loginEmail').value = email;
+                document.getElementById('loginPassword').value = password;
+                document.getElementById('loginName').value = name;
+            }
+
+            async loginWithPassword() {
+                const email = document.getElementById('loginEmail').value.trim();
+                const password = document.getElementById('loginPassword').value;
+                const name = document.getElementById('loginName').value.trim();
+
+                if (!email || !password) {
+                    this.showError('请输入邮箱和密码');
+                    return;
+                }
+                if (!name) {
+                    this.showError('请输入显示名称');
+                    return;
+                }
+
+                try {
+                    this.app = window.tcb.init({ env: this.ENV_ID });
+                    this.db = this.app.database();
+                    
+                    const auth = this.app.auth();
+                    
+                    // 使用邮箱密码登录
+                    const loginResult = await auth.signInWithEmailAndPassword(email, password);
+                    
+                    this.currentUser = loginResult.user;
+                    this.config.userEmail = email;
+                    this.config.userName = name;
+                    this.isLocalMode = false;
+                    
+                    // 保存登录信息
+                    localStorage.setItem('lv_user_email', email);
+                    localStorage.setItem('lv_user_name', name);
+                    
+                    this.startCloudMode();
+                    
+                } catch (error) {
+                    console.error('登录失败:', error);
+                    let errorMsg = '登录失败：';
+                    if (error.message.includes('user not found')) {
+                        errorMsg += '用户不存在，请检查邮箱';
+                    } else if (error.message.includes('password')) {
+                        errorMsg += '密码错误';
+                    } else if (error.message.includes('network')) {
+                        errorMsg += '网络连接失败，请检查网络';
+                    } else {
+                        errorMsg += error.message;
+                    }
+                    this.showError(errorMsg);
+                }
+            }
+
+            startCloudMode() {
+                document.getElementById('setupWizard').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                document.getElementById('userDisplay').textContent = this.config.userName;
+                document.getElementById('modeSubtitle').textContent = '云端协作版 - ' + this.config.userEmail;
+                
+                this.initData();
+                this.startRealtimeSync();
+                this.renderFridgeView();
+                this.showToast('登录成功！开始实时协作');
+            }
+
+            logout() {
+                if (confirm('确定要退出登录吗？')) {
+                    // 清除登录信息
+                    localStorage.removeItem('lv_user_email');
+                    localStorage.removeItem('lv_user_name');
+                    
+                    // 如果在线，登出
+                    if (this.app && this.app.auth) {
+                        this.app.auth().signOut().catch(() => {});
+                    }
+                    
+                    // 刷新页面
+                    location.reload();
+                }
             }
 
             // ==================== 诊断功能 ====================
@@ -763,7 +1019,7 @@
                 
                 // 测试2: 检查网络
                 try {
-                    const response = await fetch('https://www.baidu.com', { mode: 'no-cors' });
+                    await fetch('https://www.baidu.com', { mode: 'no-cors', cache: 'no-cache' });
                     results.push({
                         name: '网络连接',
                         status: 'ok',
@@ -801,26 +1057,26 @@
                         msg: '成功'
                     });
                     
-                    // 测试5: 尝试匿名登录
+                    // 测试5: 检查登录配置
                     try {
-                        await testApp.auth().anonymousAuthProvider().signIn();
+                        const auth = testApp.auth();
                         results.push({
-                            name: '匿名登录',
+                            name: '身份认证服务',
                             status: 'ok',
-                            msg: '成功'
+                            msg: '可用'
                         });
                     } catch (e) {
                         results.push({
-                            name: '匿名登录',
+                            name: '身份认证服务',
                             status: 'error',
-                            msg: e.message || '失败'
+                            msg: e.message
                         });
                     }
                 } catch (e) {
                     results.push({
                         name: '环境初始化',
                         status: 'error',
-                        msg: e.message || '失败'
+                        msg: e.message
                     });
                 }
                 
@@ -836,14 +1092,13 @@
             }
 
             useLocalMode() {
-                const name = document.getElementById('setupName').value.trim();
+                const name = document.getElementById('localName').value.trim();
                 if (!name) {
                     alert('请输入您的姓名');
                     return;
                 }
                 
                 this.config.userName = name;
-                localStorage.setItem('lv_user_name', name);
                 this.isLocalMode = true;
                 
                 const localSamples = localStorage.getItem('labvault_local_samples');
@@ -873,74 +1128,11 @@
                 this.showToast('已进入本地模式，功能完整可用');
             }
 
-            async initialize() {
-                const name = document.getElementById('setupName').value.trim();
-                if (!name) {
-                    alert('请输入您的姓名');
-                    return;
-                }
-
-                this.config.userName = name;
-                localStorage.setItem('lv_user_name', name);
-
-                try {
-                    this.app = window.tcb.init({
-                        env: this.ENV_ID
-                    });
-                    
-                    this.db = this.app.database();
-                    
-                    // 添加超时处理
-                    const loginPromise = this.app.auth().anonymousAuthProvider().signIn();
-                    const timeoutPromise = new Promise((_, reject) => {
-                        setTimeout(() => reject(new Error('连接超时，请检查网络')), 10000);
-                    });
-                    
-                    await Promise.race([loginPromise, timeoutPromise]);
-                    
-                    this.state.initialized = true;
-                    this.isLocalMode = false;
-                    
-                    await this.initData();
-                    this.startRealtimeSync();
-                    
-                    document.getElementById('setupWizard').classList.add('hidden');
-                    document.getElementById('mainApp').classList.remove('hidden');
-                    document.getElementById('userDisplay').textContent = this.config.userName;
-                    
-                    this.renderFridgeView();
-                    this.showToast('连接成功！开始实时协作');
-                    
-                } catch (error) {
-                    console.error('连接失败:', error);
-                    this.showError('连接失败：' + error.message);
-                    
-                    // 显示诊断建议
-                    const panel = document.getElementById('diagnosticPanel');
-                    const content = document.getElementById('diagnosticContent');
-                    panel.classList.remove('hidden');
-                    content.innerHTML = `
-                        <div class="diagnostic-item">
-                            <span>错误类型</span>
-                            <span class="status-error">${error.message}</span>
-                        </div>
-                        <div class="diagnostic-item">
-                            <span>建议解决方案</span>
-                        </div>
-                        <div class="text-slate-400 text-sm mt-2">
-                            1. 刷新页面重试<br>
-                            2. 使用本地服务器运行（Python: python -m http.server 8000）<br>
-                            3. 切换到本地模式继续使用<br>
-                            4. 检查腾讯云控制台"身份认证-匿名登录"是否开启
-                        </div>
-                    `;
-                }
-            }
-
             showError(msg) {
                 const errorDiv = document.getElementById('errorMsg');
                 errorDiv.textContent = msg;
                 errorDiv.classList.remove('hidden');
+                setTimeout(() => errorDiv.classList.add('hidden'), 5000);
             }
 
             async initData() {
@@ -955,6 +1147,7 @@
             }
 
             startRealtimeSync() {
+                // 监听样品数据
                 this.db.collection('samples').watch({
                     onChange: (snapshot) => {
                         this.state.samples = snapshot.docs.map(doc => ({
@@ -963,6 +1156,7 @@
                         }));
                         this.renderCurrentView();
                         
+                        // 检测其他用户的更新
                         const hasRemote = snapshot.docChanges.some(c => 
                             c.data.updatedBy !== this.config.userName
                         );
@@ -976,14 +1170,31 @@
                     onError: (err) => console.error('监听错误:', err)
                 });
 
-                this.db.collection('presence').doc(this.config.userName).set({
+                // 监听目录数据
+                this.db.collection('directories').watch({
+                    onChange: (snapshot) => {
+                        const newDirData = {};
+                        snapshot.docs.forEach(doc => {
+                            newDirData[doc.docId] = doc.data.content;
+                        });
+                        this.state.dirData = newDirData;
+                        if (this.state.currentView === 'directory') {
+                            this.renderDirectoryView();
+                        }
+                    },
+                    onError: (err) => console.error('目录监听错误:', err)
+                });
+
+                // 在线状态
+                this.db.collection('presence').doc(this.config.userEmail).set({
                     name: this.config.userName,
+                    email: this.config.userEmail,
                     online: true,
                     lastSeen: new Date()
                 });
 
                 setInterval(() => {
-                    this.db.collection('presence').doc(this.config.userName).update({
+                    this.db.collection('presence').doc(this.config.userEmail).update({
                         lastSeen: new Date()
                     });
                 }, 30000);
@@ -992,7 +1203,7 @@
                     onChange: (snapshot) => {
                         this.state.onlineUsers = snapshot.docs
                             .map(d => d.data)
-                            .filter(u => u.name !== this.config.userName);
+                            .filter(u => u.email !== this.config.userEmail);
                         this.updateOnlineUsersUI();
                     }
                 });
@@ -1147,11 +1358,11 @@
                 
                 if (this.isLocalMode) {
                     localStorage.setItem('labvault_local_dir', JSON.stringify(this.state.dirData));
+                    this.renderDirectoryView();
                 } else {
                     this.saveDirToCloud(key, content);
                 }
                 
-                this.renderDirectoryView();
                 this.closeModal('dirEditModal');
                 this.showToast('目录已保存');
                 
@@ -1221,6 +1432,11 @@
                                 this.state.dirData = imported.data;
                                 if (this.isLocalMode) {
                                     localStorage.setItem('labvault_local_dir', JSON.stringify(this.state.dirData));
+                                } else {
+                                    // 批量导入到云端
+                                    Object.entries(imported.data).forEach(([key, content]) => {
+                                        this.saveDirToCloud(key, content);
+                                    });
                                 }
                                 this.renderDirectoryView();
                                 this.showToast('目录导入成功');
@@ -1239,6 +1455,9 @@
                     this.state.dirData = {};
                     if (this.isLocalMode) {
                         localStorage.setItem('labvault_local_dir', JSON.stringify(this.state.dirData));
+                    } else {
+                        // 清空云端数据（这里简化处理，实际应该批量删除）
+                        this.showToast('云端数据请手动在控制台清空');
                     }
                     this.renderDirectoryView();
                     this.showToast('目录已清空');
